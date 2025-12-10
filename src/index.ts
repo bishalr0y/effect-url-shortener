@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { Hono, Context } from "hono";
 
 const app = new Hono();
 
-app.get("/", (c) => {
+app.get("/", (c: Context) => {
   return c.json({
     ok: true,
     message: "Hello Hono!",
@@ -10,7 +10,7 @@ app.get("/", (c) => {
 });
 
 // shortenHandler
-app.post("/shorten", (c) => {
+app.post("/shorten", (c: Context) => {
   return c.json({
     ok: true,
     message: "generate the shortened url",
@@ -18,8 +18,9 @@ app.post("/shorten", (c) => {
 });
 
 // redirectHandler
-app.get("/:code", (c) => {
+app.get("/:code", (c: Context) => {
   const code = c.req.param("code");
+  // return c.redirect("https://aiflux.tech");
   return c.json({
     ok: true,
     message: `redirect to ${code}`,
@@ -27,7 +28,7 @@ app.get("/:code", (c) => {
 });
 
 // infoHandler
-app.get("/:code/info", (c) => {
+app.get("/:code/info", (c: Context) => {
   const code = c.req.param("code");
 
   return c.json({
