@@ -23,17 +23,21 @@ app.post("/shorten", async (c: Context) => {
     Effect.flatMap(({ url }) =>
       pipe(
         createShortenedUrl(url),
-        Effect.map((record) => ({
-          ok: true,
-          message: `generated the shortened url:\n ${record.code}`,
-        })),
+        Effect.map((record) =>
+          Schema.encode(ShortenResponse)({
+            ok: true,
+            message: `generated the shortened url:\n ${record.code}`,
+          }),
+        ),
       ),
     ),
     Effect.catchAll((error) =>
-      Effect.succeed({
-        ok: false,
-        message: `Error: ${error}`,
-      }),
+      Effect.succeed(
+        Schema.encode(ShortenResponse)({
+          ok: false,
+          message: `Error: ${error}`,
+        }),
+      ),
     ),
   );
 
