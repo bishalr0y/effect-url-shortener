@@ -1,6 +1,9 @@
 import { Hono, Context } from "hono";
+import { randomBytes } from "crypto";
 
 const app = new Hono();
+
+const generateCode = () => randomBytes(2).toString("hex").toUpperCase();
 
 app.get("/", (c: Context) => {
   return c.json({
