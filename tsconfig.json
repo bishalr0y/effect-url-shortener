@@ -3,6 +3,14 @@
     "strict": true,
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
+    "downlevelIteration": true,
+    "target": "es2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["bun-types"],
     "plugins": [
       {
         "name": "@effect/language-service"

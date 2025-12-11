@@ -1,5 +1,5 @@
 import { Hono, Context } from "hono";
-import { Effect, Schema, pipe } from "effect";
+import { Effect, Schema } from "effect";
 import { randomBytes } from "crypto";
 import { prisma } from "./lib/prisma";
 import { ShortenRequest, ShortenResponse } from "./schemas";
@@ -12,30 +12,25 @@ const generateCode = () => randomBytes(2).toString("hex").toLowerCase();
 const createShortenedUrl = (url: string) =>
   Effect.tryPromise({
     try: () => prisma.url.create({ data: { url: url, code: generateCode() } }),
-    catch: (error) => new DatabaseError({ message: `${error}` }),
+    catch: (error) => new DatabaseError({ message: String(error) }),
   });
 
 // shortenHandler
 app.post("/shorten", async (c: Context) => {
-  const program = pipe(
-    Effect.promise(() => c.req.json()),
-    Effect.flatMap(Schema.decodeUnknown(ShortenRequest)),
-    Effect.flatMap(({ url }) =>
-      pipe(
-        createShortenedUrl(url),
-        Effect.map((record) =>
-          Schema.encode(ShortenResponse)({
-            ok: true,
-            message: `generated the shortened url:\n ${record.code}`,
-          }),
-        ),
-      ),
-    ),
+  const program = Effect.gen(function* () {
+    const body = yield* Effect.promise(() => c.req.json());
+    const { url } = yield* Schema.decodeUnknown(ShortenRequest)(body);
+    const record = yield* createShortenedUrl(url);
+    return yield* Schema.encode(ShortenResponse)({
+      ok: true,
+      message: `generated the shortened url:\n ${record.code}`,
+    });
+  }).pipe(
     Effect.catchAll((error) =>
       Effect.succeed(
         Schema.encode(ShortenResponse)({
           ok: false,
-          message: `Error: ${error}`,
+          message: `Error: ${String(error)}`,
         }),
       ),
     ),
