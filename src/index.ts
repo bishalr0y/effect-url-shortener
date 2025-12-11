@@ -1,49 +1,44 @@
 import { Hono, Context } from "hono";
+import { Effect, Schema, pipe } from "effect";
 import { randomBytes } from "crypto";
 import { prisma } from "./lib/prisma";
+import { ShortenRequest, ShortenResponse } from "./schemas";
+import { DatabaseError } from "./errors";
 
 const app = new Hono();
 
 const generateCode = () => randomBytes(2).toString("hex").toLowerCase();
 
-app.get("/", (c: Context) => {
-  return c.json({
-    ok: true,
-    message: "Hello Hono!",
+const createShortenedUrl = (url: string) =>
+  Effect.tryPromise({
+    try: () => prisma.url.create({ data: { url: url, code: generateCode() } }),
+    catch: (error) => new DatabaseError({ message: `${error}` }),
   });
-});
 
 // shortenHandler
 app.post("/shorten", async (c: Context) => {
-  const body = await c.req.json();
-  const url = body.url;
+  const program = pipe(
+    Effect.promise(() => c.req.json()),
+    Effect.flatMap(Schema.decodeUnknown(ShortenRequest)),
+    Effect.flatMap(({ url }) =>
+      pipe(
+        createShortenedUrl(url),
+        Effect.map((record) => ({
+          ok: true,
+          message: `generated the shortened url:\n ${record.code}`,
+        })),
+      ),
+    ),
+    Effect.catchAll((error) =>
+      Effect.succeed({
+        ok: false,
+        message: `Error: ${error}`,
+      }),
+    ),
+  );
 
-  if (!url || typeof url !== "string") {
-    console.log(url);
-    return c.json({
-      ok: false,
-      message: "Error: URL is required and must be a string",
-    });
-  }
-
-  try {
-    const newRecord = await prisma.url.create({
-      data: {
-        url: url,
-        code: generateCode(),
-      },
-    });
-
-    return c.json({
-      ok: true,
-      message: `generated the shortened url:\n ${newRecord.code}`,
-    });
-  } catch (error) {
-    return c.json({
-      ok: false,
-      message: `Error: ${error}`,
-    });
-  }
+  const result = await Effect.runPromise(program);
+  return c.json(result);
 });
 
 // redirectHandler

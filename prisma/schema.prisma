@@ -11,7 +11,7 @@ model Url {
   id        String   @id @default(uuid())
   code      String
   url       String
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@unique([code, url])
   @@map("urls")
