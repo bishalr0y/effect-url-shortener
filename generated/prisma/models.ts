@@ -8,5 +8,5 @@
  *
  * 🟢 You can import this file directly.
  */
-export type * from './models/Url.ts'
-export type * from './commonInputTypes.ts'
+export type * from './models/Url.js'
+export type * from './commonInputTypes.js'
