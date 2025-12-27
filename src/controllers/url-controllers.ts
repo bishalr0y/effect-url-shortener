@@ -1,9 +1,8 @@
-import { Hono, Context } from "hono";
+import { Context } from "hono";
 import { Effect, Schema, Layer } from "effect";
 import { UrlService, UrlServiceLive } from "../services/url-service";
 import { UrlRepositoryLive } from "../repositories/url-repository";
 import { ShortenRequest, ShortenResponse } from "../schemas";
-import { DatabaseError } from "../errors";
 
 // Handler 1: Shorten URL
 export const shortenHandler = async (c: Context) => {
