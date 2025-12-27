@@ -5,29 +5,6 @@ import { UrlRepositoryLive } from "../repositories/url-repository";
 import { ShortenRequest, ShortenResponse } from "../schemas";
 import { DatabaseError } from "../errors";
 
-// Helper: Convert Effect to Hono handler
-// E -> Error type, A -> Success type, R -> Requirements
-const effectToHandler = <E, A, R>(
-  effect: Effect.Effect<A, E, R>,
-  layer: Layer.Layer<any, never>,
-) => {
-  return async (c: Context) => {
-    const result = await Effect.runPromise(
-      Effect.provide(effect, layer).pipe(
-        Effect.catchAll((error) =>
-          Effect.succeed(
-            Schema.encode(ShortenResponse)({
-              ok: false,
-              message: `Error: ${String(error)}`,
-            }),
-          ),
-        ),
-      ),
-    );
-    return c.json(result);
-  };
-};
-
 // Handler 1: Shorten URL
 export const shortenHandler = async (c: Context) => {
   const program = Effect.gen(function* () {
@@ -46,10 +23,23 @@ export const shortenHandler = async (c: Context) => {
       message: `generated the shortened url: ${code}`,
     });
   });
-  return effectToHandler(
-    program,
-    Layer.provide(UrlServiceLive, UrlRepositoryLive),
-  )(c);
+
+  const layer = Layer.provide(UrlServiceLive, UrlRepositoryLive);
+
+  const result = await Effect.runPromise(
+    Effect.provide(program, layer).pipe(
+      Effect.catchAll((error) =>
+        Effect.succeed(
+          Schema.encode(ShortenResponse)({
+            ok: false,
+            message: `Error: ${String(error)}`,
+          }),
+        ),
+      ),
+    ),
+  );
+
+  return c.json(result);
 };
 
 // Handler 2: Redirect
@@ -70,14 +60,31 @@ export const redirectHandler = async (c: Context) => {
     return { redirect: urlRecord.url };
   });
 
-  return effectToHandler(
-    program,
-    Layer.provide(UrlServiceLive, UrlRepositoryLive),
-  )(c);
+  const layer = Layer.provide(UrlServiceLive, UrlRepositoryLive);
+
+  const result = await Effect.runPromise(
+    Effect.provide(program, layer).pipe(
+      Effect.catchAll((error) =>
+        Effect.succeed(
+          Schema.encode(ShortenResponse)({
+            ok: false,
+            message: `Error: ${String(error)}`,
+          }),
+        ),
+      ),
+    ),
+  );
+
+  // if there is no error then redirect
+  if (result && "redirect" in result) {
+    return c.redirect(result.redirect);
+  }
+
+  return c.json(result);
 };
 
 // Handler 3: Info
-export const infoHandler = (c: Context) => {
+export const infoHandler = async (c: Context) => {
   const code = c.req.param("code");
 
   const program = Effect.gen(function* () {
@@ -97,8 +104,20 @@ export const infoHandler = (c: Context) => {
     });
   });
 
-  return effectToHandler(
-    program,
-    Layer.provide(UrlServiceLive, UrlRepositoryLive),
+  const layer = Layer.provide(UrlServiceLive, UrlRepositoryLive);
+
+  const result = await Effect.runPromise(
+    Effect.provide(program, layer).pipe(
+      Effect.catchAll((error) =>
+        Effect.succeed(
+          Schema.encode(ShortenResponse)({
+            ok: false,
+            message: `Error: ${String(error)}`,
+          }),
+        ),
+      ),
+    ),
   );
+
+  return c.json(result);
 };
