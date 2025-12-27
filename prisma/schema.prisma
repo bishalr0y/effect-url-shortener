@@ -9,10 +9,9 @@ datasource db {
 
 model Url {
   id        String   @id @default(uuid())
-  code      String
+  code      String   @unique
   url       String
   createdAt DateTime @default(now()) @map("created_at")
 
-  @@unique([code, url])
   @@map("urls")
 }

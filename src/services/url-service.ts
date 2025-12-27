@@ -10,7 +10,6 @@ export class UrlService extends Context.Tag("app/UrlService")<
     shortenUrl: (
       url: string,
     ) => Effect.Effect<string, DatabaseError | "ValidationError">;
-    // TODO: return string instead of Url
     resolveUrl: (code: string) => Effect.Effect<Url | null, DatabaseError>;
     getUrlInfo: (code: string) => Effect.Effect<Url | null, DatabaseError>;
   }

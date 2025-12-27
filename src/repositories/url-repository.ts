@@ -33,14 +33,11 @@ const makeLive = Effect.sync(() => ({
   findByCode: (code: string) =>
     Effect.tryPromise({
       try: () =>
-        prisma.url
-          .findFirst({
-            where: {
-              code,
-            },
-          })
-          // TODO: to check why this exists
-          .then((r) => r ?? null),
+        prisma.url.findFirst({
+          where: {
+            code,
+          },
+        }),
       catch: (error) => new DatabaseError({ message: String(error) }),
     }),
 
