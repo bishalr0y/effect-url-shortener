@@ -8,11 +8,14 @@
         "hono": "^4.10.8",
       },
       "devDependencies": {
+        "@effect/language-service": "^0.63.0",
         "@types/bun": "latest",
       },
     },
   },
   "packages": {
+    "@effect/language-service": ["@effect/language-service@0.63.0", "", { "bin": { "effect-language-service": "cli.js" } }, "sha512-ATeSq70sLmEIniZzmAdveADgaUFBpVRsKvdFnIewkw6xLV6Misf1h6C1YDIT9xwkB/Ut0GqOZ2qw5/Ufk+bB2A=="],
+
     "@types/bun": ["@types/bun@1.3.4", "", { "dependencies": { "bun-types": "1.3.4" } }, "sha512-EEPTKXHP+zKGPkhRLv+HI0UEX8/o+65hqARxLy8Ov5rIxMBPNTjeZww00CIihrIQGEQBYg+0roO5qOnS/7boGA=="],
 
     "@types/node": ["@types/node@20.19.26", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-0l6cjgF0XnihUpndDhk+nyD3exio3iKaYROSgvh/qSevPXax3L8p5DBRFjbvalnwatGgHEQn2R88y2fA3g4irg=="],

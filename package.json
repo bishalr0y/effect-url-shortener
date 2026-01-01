@@ -7,6 +7,7 @@
     "hono": "^4.10.8"
   },
   "devDependencies": {
+    "@effect/language-service": "^0.63.0",
     "@types/bun": "latest"
   }
 }

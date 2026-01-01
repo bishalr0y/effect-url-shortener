@@ -32,7 +32,7 @@ const validateUrl = (url: string): Effect.Effect<string, "ValidationError"> => {
 const makeLive = Effect.gen(function* () {
   const repo = yield* UrlRepository;
 
-  return {
+  return UrlService.of({
     shortenUrl: (url: string) =>
       Effect.gen(function* () {
         // validate url
@@ -65,7 +65,7 @@ const makeLive = Effect.gen(function* () {
     resolveUrl: (code: string) => repo.findByCode(code),
 
     getUrlInfo: (code: string) => repo.findByCode(code),
-  };
+  });
 });
 
 export const UrlServiceLive = Layer.effect(UrlService, makeLive);
