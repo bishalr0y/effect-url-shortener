@@ -1,6 +1,8 @@
 import { Context, Layer, Effect } from "effect";
-import { prisma } from "../lib/prisma";
 import { DatabaseError } from "../errors";
+import { db } from "../lib/drizzle";
+import { urlsTable } from "../db/schema";
+import { eq } from "drizzle-orm";
 
 // Domain model
 export interface Url {
@@ -20,31 +22,60 @@ export class UrlRepository extends Context.Tag("app/UrlRepository")<
   }
 >() {}
 
-// Step 2: Live implementation using prisma
+// Step 2: Live implementation using drizzle
 const makeLive = Effect.sync(() =>
   UrlRepository.of({
     create: (url: string, code: string) =>
       Effect.tryPromise({
-        try: () =>
-          prisma.url.create({
-            data: { url, code },
-          }),
+        try: async () => {
+          const result = await db
+            .insert(urlsTable)
+            .values({ url, code })
+            .returning();
+          const record = result[0];
+          return {
+            id: record.id,
+            code: record.code,
+            url: record.url,
+            createdAt: record.created_at ?? new Date(),
+          };
+        },
         catch: (error) => new DatabaseError({ message: String(error) }),
       }),
     findByCode: (code: string) =>
       Effect.tryPromise({
-        try: () =>
-          prisma.url.findFirst({
-            where: {
-              code,
-            },
-          }),
+        try: async () => {
+          const result = await db
+            .select()
+            .from(urlsTable)
+            .where(eq(urlsTable.code, code));
+          const record = result[0];
+
+          return {
+            id: record.id,
+            code: record.code,
+            url: record.url,
+            createdAt: record.created_at ?? new Date(),
+          };
+        },
         catch: (error) => new DatabaseError({ message: String(error) }),
       }),
 
     getAll: () =>
       Effect.tryPromise({
-        try: () => prisma.url.findMany(),
+        try: async () => {
+          const records = await db.select().from(urlsTable);
+          const results: Url[] = [];
+          for (let i = 0; i < records.length; i++) {
+            results[i] = {
+              id: records[i].id,
+              code: records[i].code,
+              url: records[i].url,
+              createdAt: records[i].created_at ?? new Date(),
+            };
+          }
+          return results;
+        },
         catch: (error) => new DatabaseError({ message: String(error) }),
       }),
   }),

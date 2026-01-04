@@ -1,0 +1,1 @@
+ALTER TABLE "urls" ALTER COLUMN "created_at" DROP NOT NULL;
