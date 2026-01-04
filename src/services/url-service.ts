@@ -1,6 +1,10 @@
 import { Context, Layer, Effect } from "effect";
 import { UrlRepository, Url } from "../repositories/url-repository";
-import { DatabaseError } from "../errors";
+import {
+  DatabaseError,
+  UrlAlreadyExistsError,
+  UrlValidationError,
+} from "../errors";
 import { randomBytes } from "crypto";
 
 // Step 1: Define Service Tag
@@ -9,7 +13,10 @@ export class UrlService extends Context.Tag("app/UrlService")<
   {
     shortenUrl: (
       url: string,
-    ) => Effect.Effect<string, DatabaseError | "ValidationError">;
+    ) => Effect.Effect<
+      string,
+      DatabaseError | UrlAlreadyExistsError | UrlValidationError
+    >;
     resolveUrl: (code: string) => Effect.Effect<Url | null, DatabaseError>;
     getUrlInfo: (code: string) => Effect.Effect<Url | null, DatabaseError>;
   }
@@ -19,12 +26,14 @@ export class UrlService extends Context.Tag("app/UrlService")<
 const generateCode = () => randomBytes(2).toString("hex").toLowerCase();
 
 // Helper validate URL
-const validateUrl = (url: string): Effect.Effect<string, "ValidationError"> => {
+const validateUrl = (
+  url: string,
+): Effect.Effect<string, UrlValidationError> => {
   try {
     new URL(url);
     return Effect.succeed(url);
   } catch {
-    return Effect.fail("ValidationError" as const);
+    return new UrlValidationError({ message: "Invalid URL" });
   }
 };
 

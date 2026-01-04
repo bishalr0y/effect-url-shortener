@@ -27,18 +27,35 @@ export const shortenHandler = async (c: Context) => {
 
   const result = await Effect.runPromise(
     Effect.provide(program, layer).pipe(
-      Effect.catchAll((error) =>
-        Effect.succeed(
-          Schema.encode(ShortenResponse)({
-            ok: false,
-            message: `Error: ${String(error)}`,
-          }),
-        ),
+      Effect.map((response) => ({ ...response, statusCode: 200 })),
+      Effect.catchTag("UrlAlreadyExistsError", (error) =>
+        Effect.succeed({
+          ok: false,
+          message: error.message,
+          statusCode: 400,
+        }),
+      ),
+      Effect.catchTag("UrlValidationError", (error) =>
+        Effect.succeed({
+          ok: false,
+          message: error.message,
+          statusCode: 400,
+        }),
+      ),
+      Effect.catchTag("DatabaseError", (error) =>
+        Effect.succeed({
+          ok: false,
+          message: error.message,
+          statusCode: 500,
+        }),
       ),
     ),
   );
 
-  return c.json(result);
+  return c.json(
+    { ok: result.ok, message: result.message },
+    result.statusCode as 200 | 400 | 500,
+  );
 };
 
 // Handler 2: Redirect
@@ -63,13 +80,11 @@ export const redirectHandler = async (c: Context) => {
 
   const result = await Effect.runPromise(
     Effect.provide(program, layer).pipe(
-      Effect.catchAll((error) =>
-        Effect.succeed(
-          Schema.encode(ShortenResponse)({
-            ok: false,
-            message: `Error: ${String(error)}`,
-          }),
-        ),
+      Effect.catchTag("DatabaseError", (error) =>
+        Effect.succeed({
+          ok: false,
+          message: error.message,
+        }),
       ),
     ),
   );
@@ -107,13 +122,11 @@ export const infoHandler = async (c: Context) => {
 
   const result = await Effect.runPromise(
     Effect.provide(program, layer).pipe(
-      Effect.catchAll((error) =>
-        Effect.succeed(
-          Schema.encode(ShortenResponse)({
-            ok: false,
-            message: `Error: ${String(error)}`,
-          }),
-        ),
+      Effect.catchTag("DatabaseError", (error) =>
+        Effect.succeed({
+          ok: false,
+          message: error.message,
+        }),
       ),
     ),
   );

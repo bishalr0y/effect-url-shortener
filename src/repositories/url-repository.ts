@@ -1,5 +1,5 @@
-import { Context, Layer, Effect } from "effect";
-import { DatabaseError } from "../errors";
+import { Context, Layer, Effect, Console } from "effect";
+import { DatabaseError, UrlAlreadyExistsError } from "../errors";
 import { db } from "../lib/drizzle";
 import { urlsTable } from "../db/schema";
 import { eq } from "drizzle-orm";
@@ -16,7 +16,10 @@ export interface Url {
 export class UrlRepository extends Context.Tag("app/UrlRepository")<
   UrlRepository,
   {
-    create: (url: string, code: string) => Effect.Effect<Url, DatabaseError>;
+    create: (
+      url: string,
+      code: string,
+    ) => Effect.Effect<Url, DatabaseError | UrlAlreadyExistsError>;
     findByCode: (code: string) => Effect.Effect<Url | null, DatabaseError>;
     getAll: () => Effect.Effect<Url[], DatabaseError>;
   }
@@ -26,25 +29,48 @@ export class UrlRepository extends Context.Tag("app/UrlRepository")<
 const makeLive = Effect.sync(() =>
   UrlRepository.of({
     create: (url: string, code: string) =>
-      Effect.tryPromise({
-        try: async () => {
-          await db.insert(urlsTable).values({ url, code });
-          const result = await db
-            .select()
-            .from(urlsTable)
-            .where(eq(urlsTable.code, code));
-          if (!result || result.length === 0) {
-            new DatabaseError({ message: "Insert returned no records" });
-          }
-          const record = result[0];
-          return {
-            id: record.id,
-            code: record.code,
-            url: record.url ?? "",
-            createdAt: record.created_at ?? new Date(),
-          };
-        },
-        catch: (error) => new DatabaseError({ message: String(error) }),
+      Effect.gen(function* () {
+        const isRecordExists = yield* Effect.tryPromise({
+          try: () =>
+            db
+              .select({ id: urlsTable.id })
+              .from(urlsTable)
+              .where(eq(urlsTable.url, url)),
+          catch: (error) => new DatabaseError({ message: String(error) }),
+        });
+
+        if (isRecordExists.length > 0) {
+          return yield* Effect.fail(
+            new UrlAlreadyExistsError({
+              message: "The url already exists",
+            }),
+          );
+        }
+
+        yield* Effect.tryPromise({
+          try: () => db.insert(urlsTable).values({ url, code }),
+          catch: (error) => new DatabaseError({ message: String(error) }),
+        });
+
+        const result = yield* Effect.tryPromise({
+          try: () =>
+            db.select().from(urlsTable).where(eq(urlsTable.code, code)),
+          catch: (error) => new DatabaseError({ message: String(error) }),
+        });
+
+        if (!result || result.length === 0) {
+          return yield* Effect.fail(
+            new DatabaseError({ message: "Insert returned no records" }),
+          );
+        }
+
+        const record = result[0];
+        return {
+          id: record.id,
+          code: record.code,
+          url: record.url ?? "",
+          createdAt: record.created_at ?? new Date(),
+        };
       }),
     findByCode: (code: string) =>
       Effect.tryPromise({
