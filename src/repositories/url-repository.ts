@@ -28,15 +28,19 @@ const makeLive = Effect.sync(() =>
     create: (url: string, code: string) =>
       Effect.tryPromise({
         try: async () => {
+          await db.insert(urlsTable).values({ url, code });
           const result = await db
-            .insert(urlsTable)
-            .values({ url, code })
-            .returning();
+            .select()
+            .from(urlsTable)
+            .where(eq(urlsTable.code, code));
+          if (!result || result.length === 0) {
+            throw new Error("Insert returned no records");
+          }
           const record = result[0];
           return {
             id: record.id,
             code: record.code,
-            url: record.url,
+            url: record.url ?? "",
             createdAt: record.created_at ?? new Date(),
           };
         },
@@ -49,12 +53,15 @@ const makeLive = Effect.sync(() =>
             .select()
             .from(urlsTable)
             .where(eq(urlsTable.code, code));
+          if (!result || result.length === 0) {
+            return null;
+          }
           const record = result[0];
 
           return {
             id: record.id,
             code: record.code,
-            url: record.url,
+            url: record.url ?? "",
             createdAt: record.created_at ?? new Date(),
           };
         },

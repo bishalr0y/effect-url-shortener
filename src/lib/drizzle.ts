@@ -1,9 +1,5 @@
 import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 
-// You can specify any property from the postgres-js connection options
-export const db = drizzle({
-  connection: {
-    url: process.env.DATABASE_URL,
-    ssl: true,
-  },
-});
+const client = postgres(process.env.DATABASE_URL!, { ssl: true });
+export const db = drizzle(client);
