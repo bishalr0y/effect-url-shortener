@@ -34,7 +34,7 @@ const makeLive = Effect.sync(() =>
             .from(urlsTable)
             .where(eq(urlsTable.code, code));
           if (!result || result.length === 0) {
-            throw new Error("Insert returned no records");
+            new DatabaseError({ message: "Insert returned no records" });
           }
           const record = result[0];
           return {
