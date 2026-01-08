@@ -1,5 +1,9 @@
-import { Context, Layer, Effect, Console } from "effect";
-import { DatabaseError, UrlAlreadyExistsError } from "../errors";
+import { Context, Layer, Effect } from "effect";
+import {
+  DatabaseError,
+  UrlAlreadyExistsError,
+  UrlDoesntExistsError,
+} from "../errors";
 import { db } from "../lib/drizzle";
 import { urlsTable } from "../db/schema";
 import { eq } from "drizzle-orm";
@@ -20,7 +24,9 @@ export class UrlRepository extends Context.Tag("app/UrlRepository")<
       url: string,
       code: string,
     ) => Effect.Effect<Url, DatabaseError | UrlAlreadyExistsError>;
-    findByCode: (code: string) => Effect.Effect<Url | null, DatabaseError>;
+    findByCode: (
+      code: string,
+    ) => Effect.Effect<Url, DatabaseError | UrlDoesntExistsError>;
     getAll: () => Effect.Effect<Url[], DatabaseError>;
   }
 >() {}
@@ -73,25 +79,33 @@ const makeLive = Effect.sync(() =>
         };
       }),
     findByCode: (code: string) =>
-      Effect.tryPromise({
-        try: async () => {
-          const result = await db
-            .select()
-            .from(urlsTable)
-            .where(eq(urlsTable.code, code));
-          if (!result || result.length === 0) {
-            return null;
-          }
-          const record = result[0];
+      Effect.gen(function* () {
+        const result = yield* Effect.tryPromise({
+          try: async () => {
+            const result = await db
+              .select()
+              .from(urlsTable)
+              .where(eq(urlsTable.code, code));
+            return result;
+          },
+          catch: (error) => new DatabaseError({ message: String(error) }),
+        });
 
-          return {
-            id: record.id,
-            code: record.code,
-            url: record.url ?? "",
-            createdAt: record.created_at ?? new Date(),
-          };
-        },
-        catch: (error) => new DatabaseError({ message: String(error) }),
+        if (!result || result.length === 0) {
+          return yield* Effect.fail(
+            new UrlDoesntExistsError({
+              message: "Url does not exists",
+            }),
+          );
+        }
+
+        const record = result[0];
+        return {
+          id: record.id,
+          code: record.code,
+          url: record.url ?? "",
+          createdAt: record.created_at ?? new Date(),
+        };
       }),
 
     getAll: () =>
@@ -137,7 +151,18 @@ const makeTest = Effect.sync(() => {
         urls.push(newUrl);
         return newUrl;
       }),
-    findByCode: (code: string) => Effect.sync(() => store.get(code) ?? null),
+    findByCode: (code: string) =>
+      Effect.gen(function* () {
+        const url = store.get(code);
+        if (!url) {
+          return yield* Effect.fail(
+            new UrlDoesntExistsError({
+              message: "Url does not exists",
+            }),
+          );
+        }
+        return url;
+      }),
     getAll: () => Effect.sync(() => [...urls]),
   });
 });

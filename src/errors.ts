@@ -10,6 +10,12 @@ export class UrlAlreadyExistsError extends Data.TaggedError(
   readonly message: string;
 }> {}
 
+export class UrlDoesntExistsError extends Data.TaggedError(
+  "UrlDoesntExistsError",
+)<{
+  readonly message: string;
+}> {}
+
 export class UrlValidationError extends Data.TaggedError("UrlValidationError")<{
   readonly message: string;
 }> {}

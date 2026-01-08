@@ -3,6 +3,7 @@ import { UrlRepository, Url } from "../repositories/url-repository";
 import {
   DatabaseError,
   UrlAlreadyExistsError,
+  UrlDoesntExistsError,
   UrlValidationError,
 } from "../errors";
 import { randomBytes } from "crypto";
@@ -15,10 +16,17 @@ export class UrlService extends Context.Tag("app/UrlService")<
       url: string,
     ) => Effect.Effect<
       string,
-      DatabaseError | UrlAlreadyExistsError | UrlValidationError
+      | DatabaseError
+      | UrlAlreadyExistsError
+      | UrlValidationError
+      | UrlDoesntExistsError
     >;
-    resolveUrl: (code: string) => Effect.Effect<Url | null, DatabaseError>;
-    getUrlInfo: (code: string) => Effect.Effect<Url | null, DatabaseError>;
+    resolveUrl: (
+      code: string,
+    ) => Effect.Effect<Url | null, DatabaseError | UrlDoesntExistsError>;
+    getUrlInfo: (
+      code: string,
+    ) => Effect.Effect<Url | null, DatabaseError | UrlDoesntExistsError>;
   }
 >() {}
 
