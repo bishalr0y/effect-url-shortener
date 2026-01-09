@@ -115,7 +115,6 @@ export const redirectHandler = async (c: Context) => {
 };
 
 // Handler 3: Info
-// TODO: add error handler
 export const infoHandler = async (c: Context) => {
   const code = c.req.param("code");
 
@@ -140,14 +139,27 @@ export const infoHandler = async (c: Context) => {
 
   const result = await Effect.runPromise(
     Effect.provide(program, layer).pipe(
+      Effect.map((response) => ({ ...response, statusCode: 200 })),
+
       Effect.catchTag("DatabaseError", (error) =>
         Effect.succeed({
           ok: false,
           message: error.message,
+          statusCode: 500,
+        }),
+      ),
+      Effect.catchTag("UrlDoesntExistsError", (error) =>
+        Effect.succeed({
+          ok: false,
+          message: error.message,
+          statusCode: 404,
         }),
       ),
     ),
   );
 
-  return c.json(result);
+  return c.json(
+    { ok: result.ok, message: result.message },
+    result.statusCode as 200 | 404 | 500,
+  );
 };
