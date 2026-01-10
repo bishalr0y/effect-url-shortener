@@ -27,6 +27,7 @@ export class UrlRepository extends Context.Tag("app/UrlRepository")<
     findByCode: (
       code: string,
     ) => Effect.Effect<Url, DatabaseError | UrlDoesntExistsError>;
+    checkIfCodeExists: (code: string) => Effect.Effect<boolean, DatabaseError>;
     getAll: () => Effect.Effect<Url[], DatabaseError>;
   }
 >() {}
@@ -82,11 +83,11 @@ const makeLive = Effect.sync(() =>
       Effect.gen(function* () {
         const result = yield* Effect.tryPromise({
           try: async () => {
-            const result = await db
+            const urlRecord = await db
               .select()
               .from(urlsTable)
               .where(eq(urlsTable.code, code));
-            return result;
+            return urlRecord;
           },
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
@@ -106,6 +107,25 @@ const makeLive = Effect.sync(() =>
           url: record.url ?? "",
           createdAt: record.created_at ?? new Date(),
         };
+      }),
+
+    checkIfCodeExists: (code: string) =>
+      Effect.gen(function* () {
+        const result = yield* Effect.tryPromise({
+          try: async () => {
+            const urlRecord = await db
+              .select()
+              .from(urlsTable)
+              .where(eq(urlsTable.code, code));
+            return urlRecord;
+          },
+          catch: (error) => new DatabaseError({ message: String(error) }),
+        });
+
+        if (!result || result.length === 0) {
+          return false;
+        }
+        return true;
       }),
 
     getAll: () =>
@@ -162,6 +182,15 @@ const makeTest = Effect.sync(() => {
           );
         }
         return url;
+      }),
+
+    checkIfCodeExists: (code: string) =>
+      Effect.gen(function* () {
+        const url = store.get(code);
+        if (!url) {
+          return false;
+        }
+        return true;
       }),
     getAll: () => Effect.sync(() => [...urls]),
   });

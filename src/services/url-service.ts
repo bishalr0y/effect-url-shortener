@@ -62,7 +62,7 @@ const makeLive = Effect.gen(function* () {
 
         do {
           code = generateCode();
-          const existing = yield* repo.findByCode(code);
+          const existing = yield* repo.checkIfCodeExists(code);
 
           if (!existing) break;
           attempts++;
