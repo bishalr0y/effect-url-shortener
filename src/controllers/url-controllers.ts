@@ -2,7 +2,7 @@ import { Context } from "hono";
 import { Effect, Schema, Layer } from "effect";
 import { UrlService, UrlServiceLive } from "../services/url-service";
 import { UrlRepositoryLive } from "../repositories/url-repository";
-import { ShortenRequest, ShortenResponse } from "../schemas";
+import { ShortenRequest, ShortenResponse, Url } from "../schemas";
 
 // Handler 1: Shorten URL
 export const shortenHandler = async (c: Context) => {
@@ -129,9 +129,11 @@ export const infoHandler = async (c: Context) => {
       });
     }
 
-    return yield* Schema.encode(ShortenResponse)({
-      ok: true,
-      message: `${urlRecord.code} -> ${urlRecord.url}`,
+    return yield* Schema.encode(Url)({
+      id: urlRecord.id,
+      url: urlRecord.url,
+      code: urlRecord.code,
+      createdAt: new Date(urlRecord.createdAt).toISOString(),
     });
   });
 
@@ -158,8 +160,8 @@ export const infoHandler = async (c: Context) => {
     ),
   );
 
-  return c.json(
-    { ok: result.ok, message: result.message },
-    result.statusCode as 200 | 404 | 500,
-  );
+  // destructure the statusCode and body
+  const { statusCode, ...body } = result;
+
+  return c.json(body, statusCode as 200 | 404 | 500);
 };
