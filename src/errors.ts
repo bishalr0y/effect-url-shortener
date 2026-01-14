@@ -19,3 +19,15 @@ export class UrlDoesntExistsError extends Data.TaggedError(
 export class UrlValidationError extends Data.TaggedError("UrlValidationError")<{
   readonly message: string;
 }> {}
+
+export class UserAlreadyExistsError extends Data.TaggedError(
+  "UserAlreadyExistsError",
+)<{
+  readonly message: string;
+}> {}
+
+export class UserDoesntExistsError extends Data.TaggedError(
+  "UserDoesntExistsError",
+)<{
+  readonly message: string;
+}> {}

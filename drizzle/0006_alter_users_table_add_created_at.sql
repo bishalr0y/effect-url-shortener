@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "created_at" date DEFAULT now();

@@ -4,6 +4,7 @@ export const usersTable = p.pgTable("users", {
   id: p.uuid().defaultRandom().primaryKey(),
   email: p.text().unique().notNull(),
   password: p.text().notNull(),
+  created_at: p.date().defaultNow(),
 });
 
 export const urlsTable = p.pgTable("urls", {
