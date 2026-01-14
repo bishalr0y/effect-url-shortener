@@ -11,7 +11,7 @@ export const urlsTable = p.pgTable("urls", {
   id: p.uuid().defaultRandom().primaryKey(),
   code: p.text().unique().notNull(),
   url: p.text().notNull().unique(),
-  created_at: p.timestamp().defaultNow(),
+  created_at: p.date().defaultNow(),
   // TODO: will add the line below when the user functionalities are done
   // user_id_fk: p.uuid().references(() => usersTable.id, { onDelete: "cascade" }),
 });

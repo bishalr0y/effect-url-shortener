@@ -7,6 +7,8 @@ import {
 import { usersTable } from "../db/schema";
 import { db } from "../lib/drizzle";
 
+import { eq } from "drizzle-orm";
+
 // Domain interface
 export interface User {
   id: string;
@@ -23,9 +25,9 @@ export class UserRepository extends Context.Tag("app/UserRepository")<
       email: string,
       password: string,
     ) => Effect.Effect<Boolean, DatabaseError | UserAlreadyExistsError>;
-    // getById: (
-    //   id: string,
-    // ) => Effect.Effect<User, DatabaseError | UserDoesntExistsError>;
+    getById: (
+      id: string,
+    ) => Effect.Effect<User, DatabaseError | UserDoesntExistsError>;
     // getAll: () => Effect.Effect<User[], DatabaseError>;
   }
 >() {}
@@ -59,6 +61,30 @@ export const makeLive = Effect.sync(() =>
         }
         return true;
       }),
+    getById: (id: string) =>
+      Effect.gen(function* () {
+        const result = yield* Effect.tryPromise({
+          try: () => db.select().from(usersTable).where(eq(usersTable.id, id)),
+          catch: (error) => new DatabaseError({ message: String(error) }),
+        });
+
+        if (!result || result.length === 0) {
+          return yield* Effect.fail(
+            new UserDoesntExistsError({
+              message: "User does not exists",
+            }),
+          );
+        }
+
+        const user = result[0];
+
+        return {
+          id: user.id,
+          email: user.email,
+          password: "",
+          createdAt: user.created_at ? new Date(user.created_at) : new Date(),
+        };
+      }),
   }),
 );
 
@@ -81,6 +107,19 @@ const makeTest = Effect.sync(() => {
         store.set(newUser.id, newUser);
         users.push(newUser);
         return true;
+      }),
+    getById: (id: string) =>
+      Effect.gen(function* () {
+        const user = store.get(id);
+
+        if (!user) {
+          return yield* Effect.fail(
+            new UserDoesntExistsError({
+              message: "User does not exists",
+            }),
+          );
+        }
+        return user;
       }),
   });
 });

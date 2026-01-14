@@ -76,19 +76,17 @@ const makeLive = Effect.sync(() =>
           id: record.id,
           code: record.code,
           url: record.url ?? "",
-          createdAt: record.created_at ?? new Date(),
+          createdAt: record.created_at ? new Date(record.created_at) : new Date(),
         };
       }),
     findByCode: (code: string) =>
       Effect.gen(function* () {
         const result = yield* Effect.tryPromise({
-          try: async () => {
-            const urlRecord = await db
+          try: () =>
+            db
               .select()
               .from(urlsTable)
-              .where(eq(urlsTable.code, code));
-            return urlRecord;
-          },
+              .where(eq(urlsTable.code, code)),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
 
@@ -105,20 +103,18 @@ const makeLive = Effect.sync(() =>
           id: record.id,
           code: record.code,
           url: record.url ?? "",
-          createdAt: record.created_at ?? new Date(),
+          createdAt: record.created_at ? new Date(record.created_at) : new Date(),
         };
       }),
 
     checkIfCodeExists: (code: string) =>
       Effect.gen(function* () {
         const result = yield* Effect.tryPromise({
-          try: async () => {
-            const urlRecord = await db
+          try: () =>
+            db
               .select()
               .from(urlsTable)
-              .where(eq(urlsTable.code, code));
-            return urlRecord;
-          },
+              .where(eq(urlsTable.code, code)),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
 
@@ -138,7 +134,9 @@ const makeLive = Effect.sync(() =>
               id: records[i].id,
               code: records[i].code,
               url: records[i].url,
-              createdAt: records[i].created_at ?? new Date(),
+              createdAt: records[i].created_at
+                ? new Date(records[i].created_at as string)
+                : new Date(),
             };
           }
           return results;
