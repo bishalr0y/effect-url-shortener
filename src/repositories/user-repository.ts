@@ -1,4 +1,4 @@
-import { Context, Layer, Effect, Data } from "effect";
+import { Context, Layer, Effect } from "effect";
 import {
   DatabaseError,
   UserAlreadyExistsError,
@@ -6,8 +6,6 @@ import {
 } from "../errors";
 import { usersTable } from "../db/schema";
 import { db } from "../lib/drizzle";
-import { UrlRepository } from "./url-repository";
-import { UrlService } from "../services/url-service";
 
 // Domain interface
 export interface User {
