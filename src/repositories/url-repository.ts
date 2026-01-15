@@ -76,17 +76,16 @@ const makeLive = Effect.sync(() =>
           id: record.id,
           code: record.code,
           url: record.url ?? "",
-          createdAt: record.created_at ? new Date(record.created_at) : new Date(),
+          createdAt: record.created_at
+            ? new Date(record.created_at)
+            : new Date(),
         };
       }),
     findByCode: (code: string) =>
       Effect.gen(function* () {
         const result = yield* Effect.tryPromise({
           try: () =>
-            db
-              .select()
-              .from(urlsTable)
-              .where(eq(urlsTable.code, code)),
+            db.select().from(urlsTable).where(eq(urlsTable.code, code)),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
 
@@ -103,7 +102,9 @@ const makeLive = Effect.sync(() =>
           id: record.id,
           code: record.code,
           url: record.url ?? "",
-          createdAt: record.created_at ? new Date(record.created_at) : new Date(),
+          createdAt: record.created_at
+            ? new Date(record.created_at)
+            : new Date(),
         };
       }),
 
@@ -111,10 +112,7 @@ const makeLive = Effect.sync(() =>
       Effect.gen(function* () {
         const result = yield* Effect.tryPromise({
           try: () =>
-            db
-              .select()
-              .from(urlsTable)
-              .where(eq(urlsTable.code, code)),
+            db.select().from(urlsTable).where(eq(urlsTable.code, code)),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
 
@@ -128,9 +126,9 @@ const makeLive = Effect.sync(() =>
       Effect.tryPromise({
         try: async () => {
           const records = await db.select().from(urlsTable);
-          const results: Url[] = [];
+          const urls: Url[] = [];
           for (let i = 0; i < records.length; i++) {
-            results[i] = {
+            urls[i] = {
               id: records[i].id,
               code: records[i].code,
               url: records[i].url,
@@ -139,7 +137,7 @@ const makeLive = Effect.sync(() =>
                 : new Date(),
             };
           }
-          return results;
+          return urls;
         },
         catch: (error) => new DatabaseError({ message: String(error) }),
       }),
@@ -190,6 +188,7 @@ const makeTest = Effect.sync(() => {
         }
         return true;
       }),
+    // copy of urls is returned to avoid mutation
     getAll: () => Effect.sync(() => [...urls]),
   });
 });

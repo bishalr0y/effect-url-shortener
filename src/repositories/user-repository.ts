@@ -8,6 +8,7 @@ import { usersTable } from "../db/schema";
 import { db } from "../lib/drizzle";
 
 import { eq } from "drizzle-orm";
+import { password } from "bun";
 
 // Domain interface
 export interface User {
@@ -28,7 +29,7 @@ export class UserRepository extends Context.Tag("app/UserRepository")<
     getById: (
       id: string,
     ) => Effect.Effect<User, DatabaseError | UserDoesntExistsError>;
-    // getAll: () => Effect.Effect<User[], DatabaseError>;
+    getAll: () => Effect.Effect<User[], DatabaseError>;
   }
 >() {}
 
@@ -85,6 +86,28 @@ export const makeLive = Effect.sync(() =>
           createdAt: user.created_at ? new Date(user.created_at) : new Date(),
         };
       }),
+    getAll: () =>
+      Effect.gen(function* () {
+        yield* Effect.tryPromise({
+          try: async () => {
+            const records = await db.select().from(usersTable);
+            const users: User[] = [];
+            for (let i = 0; i < records.length; i++) {
+              users[i] = {
+                id: records[i].id,
+                email: records[i].email,
+                password: "",
+                createdAt: records[i].created_at
+                  ? new Date(records[i].created_at as string)
+                  : new Date(),
+              };
+            }
+            return users;
+          },
+          catch: (error) => new DatabaseError({ message: String(error) }),
+        });
+        return [] as User[];
+      }),
   }),
 );
 
@@ -121,6 +144,8 @@ const makeTest = Effect.sync(() => {
         }
         return user;
       }),
+    // copy of the users is returned to avoid mutation
+    getAll: () => Effect.sync(() => [...users]),
   });
 });
 
