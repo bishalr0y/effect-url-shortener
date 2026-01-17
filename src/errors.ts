@@ -31,3 +31,15 @@ export class UserDoesntExistsError extends Data.TaggedError(
 )<{
   readonly message: string;
 }> {}
+
+export class InvalidCredentialsError extends Data.TaggedError(
+  "InvalidCredentialsError",
+)<{
+  readonly message: string;
+}> {}
+
+export class InvalidJwtTokenError extends Data.TaggedError(
+  "InvalidJwtTokenError",
+)<{
+  readonly messag: string;
+}> {}

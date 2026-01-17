@@ -8,7 +8,6 @@ import { usersTable } from "../db/schema";
 import { db } from "../lib/drizzle";
 
 import { eq } from "drizzle-orm";
-import { password } from "bun";
 
 // Domain interface
 export interface User {
@@ -25,7 +24,10 @@ export class UserRepository extends Context.Tag("app/UserRepository")<
     create: (
       email: string,
       password: string,
-    ) => Effect.Effect<Boolean, DatabaseError | UserAlreadyExistsError>;
+    ) => Effect.Effect<
+      Omit<User, "password">,
+      DatabaseError | UserAlreadyExistsError
+    >;
     getById: (
       id: string,
     ) => Effect.Effect<User, DatabaseError | UserDoesntExistsError>;
@@ -39,7 +41,12 @@ export const makeLive = Effect.sync(() =>
     create: (email: string, password: string) =>
       Effect.gen(function* () {
         const isUserExists = yield* Effect.tryPromise({
-          try: () => db.select({ id: usersTable.id }).from(usersTable),
+          try: () =>
+            db
+              .select({
+                id: usersTable.id,
+              })
+              .from(usersTable),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
 
@@ -52,15 +59,25 @@ export const makeLive = Effect.sync(() =>
         }
         // create the user
         const user = yield* Effect.tryPromise({
-          try: () =>
-            db.insert(usersTable).values({ email, password }).returning(),
+          try: async () =>
+            await db.insert(usersTable).values({ email, password }).returning({
+              id: usersTable.id,
+              email: usersTable.email,
+              createdAt: usersTable.created_at,
+            }),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
 
         if (!user) {
-          return false;
+          new DatabaseError({ message: "failed to create the user" });
         }
-        return true;
+        return {
+          id: user[0].id,
+          email: user[0].email,
+          createdAt: user[0].createdAt
+            ? new Date(user[0].createdAt)
+            : new Date(),
+        };
       }),
     getById: (id: string) =>
       Effect.gen(function* () {
@@ -129,7 +146,11 @@ const makeTest = Effect.sync(() => {
 
         store.set(newUser.id, newUser);
         users.push(newUser);
-        return true;
+        return {
+          id: newUser.id,
+          email: newUser.email,
+          createdAt: newUser.createdAt,
+        };
       }),
     getById: (id: string) =>
       Effect.gen(function* () {
