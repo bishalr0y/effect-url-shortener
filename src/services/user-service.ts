@@ -3,9 +3,11 @@ import {
   DatabaseError,
   InvalidCredentialsError,
   UserAlreadyExistsError,
+  UserDoesntExistsError,
 } from "../errors";
 import jwt from "jsonwebtoken";
 import { UserRepository } from "../repositories/user-repository";
+import { generateHash, validateHash } from "../utils/index";
 
 export class UserService extends Context.Tag("app/UserService")<
   UserService,
@@ -16,12 +18,14 @@ export class UserService extends Context.Tag("app/UserService")<
       password: string,
     ) => Effect.Effect<string, UserAlreadyExistsError | DatabaseError>;
 
-    // TODO: create a repository method for this
     // login
-    // signin: (
-    //   email: string,
-    //   password: string,
-    // ) => Effect.Effect<string, InvalidCredentialsError>;
+    signin: (
+      email: string,
+      password: string,
+    ) => Effect.Effect<
+      string,
+      DatabaseError | UserDoesntExistsError | InvalidCredentialsError
+    >;
   }
 >() {}
 
@@ -50,7 +54,22 @@ const makeLive = Effect.gen(function* () {
   return UserService.of({
     signup: (email: string, password: string) =>
       Effect.gen(function* () {
-        const user = yield* repo.create(email, password);
+        const hashedPassword = generateHash(password);
+
+        const user = yield* repo.create(email, hashedPassword);
+        const token = generateJwtToken(user.id, user.email);
+        return token;
+      }),
+    signin: (email: string, password: string) =>
+      Effect.gen(function* () {
+        const user = yield* repo.getByEmail(email);
+
+        if (!validateHash(password, user.password)) {
+          Effect.fail(
+            new InvalidCredentialsError({ message: "invalid credentials" }),
+          );
+        }
+
         const token = generateJwtToken(user.id, user.email);
         return token;
       }),

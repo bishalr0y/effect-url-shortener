@@ -1,4 +1,4 @@
-import { Context, Layer, Effect, Data } from "effect";
+import { Context, Layer, Effect } from "effect";
 import {
   DatabaseError,
   UserAlreadyExistsError,
@@ -7,7 +7,6 @@ import {
 import { usersTable } from "../db/schema";
 import { db } from "../lib/drizzle";
 import { eq } from "drizzle-orm";
-import { generateHash } from "../utils";
 
 // Domain interface
 export interface User {
@@ -30,8 +29,14 @@ export class UserRepository extends Context.Tag("app/UserRepository")<
     >;
     getById: (
       id: string,
-    ) => Effect.Effect<User, DatabaseError | UserDoesntExistsError>;
+    ) => Effect.Effect<
+      Omit<User, "password">,
+      DatabaseError | UserDoesntExistsError
+    >;
     getAll: () => Effect.Effect<User[], DatabaseError>;
+    getByEmail: (
+      email: string,
+    ) => Effect.Effect<User, DatabaseError | UserDoesntExistsError>;
   }
 >() {}
 
@@ -60,11 +65,9 @@ export const makeLive = Effect.sync(() =>
         // create the user
         const user = yield* Effect.tryPromise({
           try: async () => {
-            const hashedPassword = generateHash(password) as string;
-
             return await db
               .insert(usersTable)
-              .values({ email, password: hashedPassword })
+              .values({ email, password })
               .returning({
                 id: usersTable.id,
                 email: usersTable.email,
@@ -105,7 +108,6 @@ export const makeLive = Effect.sync(() =>
         return {
           id: user.id,
           email: user.email,
-          password: "",
           createdAt: user.created_at ? new Date(user.created_at) : new Date(),
         };
       }),
@@ -130,6 +132,28 @@ export const makeLive = Effect.sync(() =>
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
         return [] as User[];
+      }),
+    getByEmail: (email: string) =>
+      Effect.tryPromise({
+        try: async () => {
+          const user = await db
+            .select()
+            .from(usersTable)
+            .where(eq(usersTable.email, email));
+
+          if (!user || user.length === 0) {
+            new UserDoesntExistsError({ message: "user not found" });
+          }
+          return {
+            id: user[0].id,
+            email: user[0].email,
+            password: user[0].password,
+            createdAt: user[0].created_at
+              ? new Date(user[0].created_at)
+              : new Date(),
+          };
+        },
+        catch: (error) => new DatabaseError({ message: String(error) }),
       }),
   }),
 );
@@ -173,6 +197,28 @@ const makeTest = Effect.sync(() => {
       }),
     // copy of the users is returned to avoid mutation
     getAll: () => Effect.sync(() => [...users]),
+
+    getByEmail: (email: string) =>
+      Effect.gen(function* () {
+        if (users.length === 0) {
+          return yield* Effect.fail(
+            new UserDoesntExistsError({ message: "user not found" }),
+          );
+        }
+        for (let i = 0; i < users.length; i++) {
+          if (users[i].email === email) {
+            return {
+              id: users[i].id,
+              email: users[i].email,
+              password: users[i].password,
+              createdAt: users[i].createdAt,
+            };
+          }
+        }
+        return yield* Effect.fail(
+          new UserDoesntExistsError({ message: "user not found" }),
+        );
+      }),
   });
 });
 
