@@ -16,6 +16,7 @@ export class UserService extends Context.Tag("app/UserService")<
       password: string,
     ) => Effect.Effect<string, UserAlreadyExistsError | DatabaseError>;
 
+    // TODO: create a repository method for this
     // login
     // signin: (
     //   email: string,

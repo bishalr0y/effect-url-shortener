@@ -1,4 +1,4 @@
-import { Context, Layer, Effect } from "effect";
+import { Context, Layer, Effect, Data } from "effect";
 import {
   DatabaseError,
   UserAlreadyExistsError,
@@ -6,8 +6,8 @@ import {
 } from "../errors";
 import { usersTable } from "../db/schema";
 import { db } from "../lib/drizzle";
-
 import { eq } from "drizzle-orm";
+import { generateHash } from "../utils";
 
 // Domain interface
 export interface User {
@@ -59,12 +59,18 @@ export const makeLive = Effect.sync(() =>
         }
         // create the user
         const user = yield* Effect.tryPromise({
-          try: async () =>
-            await db.insert(usersTable).values({ email, password }).returning({
-              id: usersTable.id,
-              email: usersTable.email,
-              createdAt: usersTable.created_at,
-            }),
+          try: async () => {
+            const hashedPassword = generateHash(password) as string;
+
+            return await db
+              .insert(usersTable)
+              .values({ email, password: hashedPassword })
+              .returning({
+                id: usersTable.id,
+                email: usersTable.email,
+                createdAt: usersTable.created_at,
+              });
+          },
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
 

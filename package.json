@@ -4,7 +4,9 @@
     "dev": "bun run --hot src/index.ts"
   },
   "dependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/jsonwebtoken": "^9.0.10",
+    "bcrypt": "^6.0.0",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.10.8",
     "jsonwebtoken": "^9.0.3",
