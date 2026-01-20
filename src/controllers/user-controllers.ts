@@ -4,6 +4,20 @@ import { UserService, UserServiceLive } from "../services/user-service";
 import { UserAuthRequest, UserAuthResponse } from "../schemas";
 import { UserRepositoryLive } from "../repositories/user-repository";
 
+// helper function to return human readable error message
+const formatValidationError = (message: string): string => {
+  if (message.includes("is missing")) {
+    return "Missing required fields";
+  }
+  if (message.includes('"email"') && message.includes("pattern")) {
+    return "Invalid email format";
+  }
+  if (message.includes('"password"') && message.includes("minLength")) {
+    return "Password must be at least 6 characters";
+  }
+  return "Invalid request data";
+};
+
 export const signupHandler = async (c: Context) => {
   const program = Effect.gen(function* () {
     const userService = yield* UserService;
@@ -31,7 +45,7 @@ export const signupHandler = async (c: Context) => {
       Effect.catchTag("ParseError", (error) =>
         Effect.succeed({
           ok: false,
-          message: error.message,
+          message: formatValidationError(error.message),
           statusCode: 400,
         }),
       ),
