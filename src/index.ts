@@ -6,7 +6,7 @@ import {
   redirectHandler,
   infoHandler,
 } from "./controllers/url-controllers";
-import { signupHandler } from "./controllers/user-controllers";
+import { signInHandler, signupHandler } from "./controllers/user-controllers";
 
 const app = new Hono();
 app.use(logger());
@@ -16,5 +16,7 @@ app.get("/:code", redirectHandler);
 app.get("/:code/info", infoHandler);
 
 app.post("/signup", signupHandler);
+
+app.post("/signin", signInHandler);
 
 export default app;

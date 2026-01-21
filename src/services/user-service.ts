@@ -65,8 +65,10 @@ const makeLive = Effect.gen(function* () {
         const user = yield* repo.getByEmail(email);
 
         if (!validateHash(password, user.password)) {
-          Effect.fail(
-            new InvalidCredentialsError({ message: "invalid credentials" }),
+          yield* Effect.fail(
+            new InvalidCredentialsError({
+              message: "invalid credentials",
+            }),
           );
         }
 

@@ -46,6 +46,7 @@ export const signupHandler = async (c: Context) => {
         Effect.succeed({
           ok: false,
           message: formatValidationError(error.message),
+          token: "",
           statusCode: 400,
         }),
       ),
@@ -54,6 +55,7 @@ export const signupHandler = async (c: Context) => {
         Effect.succeed({
           ok: false,
           message: error.message,
+          token: "",
           statusCode: 400,
         }),
       ),
@@ -62,6 +64,7 @@ export const signupHandler = async (c: Context) => {
         Effect.succeed({
           ok: false,
           message: error.message,
+          token: "",
           statusCode: 500,
         }),
       ),
@@ -72,7 +75,93 @@ export const signupHandler = async (c: Context) => {
     {
       ok: result.ok,
       message: result.message,
+      token: result.token,
     },
     result.statusCode as 200 | 400 | 500,
   );
+};
+
+export const signInHandler = async (c: Context) => {
+  const program = Effect.gen(function* () {
+    const service = yield* UserService;
+
+    const body = yield* Effect.promise(() => c.req.json());
+    const { email, password } =
+      yield* Schema.decodeUnknown(UserAuthRequest)(body);
+
+    const jwtToken = yield* service.signin(email, password);
+
+    return yield* Schema.encode(UserAuthResponse)({
+      ok: true,
+      token: jwtToken,
+      message: "user signup successfull",
+    });
+  });
+
+  const layer = Layer.provide(UserServiceLive, UserRepositoryLive);
+
+  const result = await Effect.runPromise(
+    Effect.provide(program, layer).pipe(
+      Effect.map((response) => {
+        console.log("Success response:", response);
+        return { ...response, statusCode: 200 };
+      }),
+
+      Effect.catchTag("ParseError", (error) => {
+        console.log("ParseError:", error.message);
+        return Effect.succeed({
+          ok: false,
+          message: formatValidationError(error.message),
+          token: "",
+          statusCode: 400,
+        });
+      }),
+
+      Effect.catchTag("UserDoesntExistsError", (error) => {
+        console.log("UserDoesntExistsError:", error.message);
+        return Effect.succeed({
+          ok: false,
+          message: error.message,
+          token: "",
+          statusCode: 400,
+        });
+      }),
+
+      Effect.catchTag("InvalidCredentialsError", (error) => {
+        console.log("InvalidCredentialsError:", error.message);
+        return Effect.succeed({
+          ok: false,
+          message: error.message,
+          token: "",
+          statusCode: 400,
+        });
+      }),
+
+      Effect.catchTag("DatabaseError", (error) => {
+        console.log("DatabaseError:", error.message);
+        return Effect.succeed({
+          ok: false,
+          message: formatValidationError(error.message),
+          token: "",
+          statusCode: 500,
+        });
+      }),
+
+      Effect.catchAll((error) => {
+        console.log("Uncaught error:", error);
+        return Effect.succeed({
+          ok: false,
+          message: "Unexpected error",
+          token: "",
+          statusCode: 500,
+        });
+      }),
+    ),
+  );
+
+  return c.json({
+    ok: result.ok,
+    message: result.message,
+    token: result.token,
+  });
 };

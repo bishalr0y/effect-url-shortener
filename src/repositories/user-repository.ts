@@ -51,7 +51,8 @@ export const makeLive = Effect.sync(() =>
               .select({
                 id: usersTable.id,
               })
-              .from(usersTable),
+              .from(usersTable)
+              .where(eq(usersTable.email, email)),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
 
@@ -134,26 +135,30 @@ export const makeLive = Effect.sync(() =>
         return [] as User[];
       }),
     getByEmail: (email: string) =>
-      Effect.tryPromise({
-        try: async () => {
-          const user = await db
-            .select()
-            .from(usersTable)
-            .where(eq(usersTable.email, email));
+      Effect.gen(function* () {
+        const result = yield* Effect.tryPromise({
+          try: async () => {
+            return await db
+              .select()
+              .from(usersTable)
+              .where(eq(usersTable.email, email));
+          },
+          catch: (error) => new DatabaseError({ message: String(error) }),
+        });
 
-          if (!user || user.length === 0) {
-            new UserDoesntExistsError({ message: "user not found" });
-          }
-          return {
-            id: user[0].id,
-            email: user[0].email,
-            password: user[0].password,
-            createdAt: user[0].created_at
-              ? new Date(user[0].created_at)
-              : new Date(),
-          };
-        },
-        catch: (error) => new DatabaseError({ message: String(error) }),
+        if (!result || result.length === 0 || !result[0]) {
+          return yield* Effect.fail(
+            new UserDoesntExistsError({ message: "user not found" }),
+          );
+        }
+
+        const user = result[0];
+        return {
+          id: user.id,
+          email: user.email,
+          password: user.password,
+          createdAt: user.created_at ? new Date(user.created_at) : new Date(),
+        };
       }),
   }),
 );
