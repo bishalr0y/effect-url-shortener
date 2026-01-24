@@ -7,6 +7,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "effect": "^3.19.14",
     "hono": "^4.10.8",

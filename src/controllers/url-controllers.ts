@@ -11,10 +11,10 @@ export const shortenHandler = async (c: Context) => {
 
     // parse request
     const body = yield* Effect.promise(() => c.req.json());
-    const { url } = yield* Schema.decodeUnknown(ShortenRequest)(body);
+    const { url, userIdFk } = yield* Schema.decodeUnknown(ShortenRequest)(body);
 
     // call service
-    const code = yield* service.shortenUrl(url);
+    const code = yield* service.shortenUrl(url, userIdFk);
 
     // return response
     return yield* Schema.encode(ShortenResponse)({
@@ -133,6 +133,7 @@ export const infoHandler = async (c: Context) => {
       id: urlRecord.id,
       url: urlRecord.url,
       code: urlRecord.code,
+      userIdFk: urlRecord.userIdFk,
       createdAt: new Date(urlRecord.createdAt).toISOString(),
     });
   });

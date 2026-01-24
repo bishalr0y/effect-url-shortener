@@ -6,13 +6,14 @@ import {
 } from "../errors";
 import { db } from "../lib/drizzle";
 import { urlsTable } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 // Domain model
 export interface Url {
   id: string;
   code: string;
   url: string;
+  userIdFk: string;
   createdAt: Date;
 }
 
@@ -23,6 +24,7 @@ export class UrlRepository extends Context.Tag("app/UrlRepository")<
     create: (
       url: string,
       code: string,
+      userIdFk: string,
     ) => Effect.Effect<Url, DatabaseError | UrlAlreadyExistsError>;
     findByCode: (
       code: string,
@@ -35,14 +37,16 @@ export class UrlRepository extends Context.Tag("app/UrlRepository")<
 // Step 2: Live implementation using drizzle
 const makeLive = Effect.sync(() =>
   UrlRepository.of({
-    create: (url: string, code: string) =>
+    create: (url: string, code: string, userIdFk: string) =>
       Effect.gen(function* () {
         const isRecordExists = yield* Effect.tryPromise({
           try: () =>
             db
               .select({ id: urlsTable.id })
               .from(urlsTable)
-              .where(eq(urlsTable.url, url)),
+              .where(
+                and(eq(urlsTable.url, url), eq(urlsTable.user_id_fk, userIdFk)),
+              ),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
 
@@ -55,7 +59,8 @@ const makeLive = Effect.sync(() =>
         }
 
         yield* Effect.tryPromise({
-          try: () => db.insert(urlsTable).values({ url, code }),
+          try: () =>
+            db.insert(urlsTable).values({ url, code, user_id_fk: userIdFk }),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
 
@@ -76,6 +81,7 @@ const makeLive = Effect.sync(() =>
           id: record.id,
           code: record.code,
           url: record.url ?? "",
+          userIdFk: record.user_id_fk,
           createdAt: record.created_at
             ? new Date(record.created_at)
             : new Date(),
@@ -102,6 +108,7 @@ const makeLive = Effect.sync(() =>
           id: record.id,
           code: record.code,
           url: record.url ?? "",
+          userIdFk: record.user_id_fk,
           createdAt: record.created_at
             ? new Date(record.created_at)
             : new Date(),
@@ -132,6 +139,7 @@ const makeLive = Effect.sync(() =>
               id: records[i].id,
               code: records[i].code,
               url: records[i].url,
+              userIdFk: records[i].user_id_fk,
               createdAt: records[i].created_at
                 ? new Date(records[i].created_at as string)
                 : new Date(),
@@ -154,12 +162,13 @@ const makeTest = Effect.sync(() => {
   const urls: Url[] = [];
 
   return UrlRepository.of({
-    create: (url: string, code: string) =>
+    create: (url: string, code: string, userIdFk: string) =>
       Effect.sync(() => {
         const newUrl: Url = {
           id: crypto.randomUUID(),
           url,
           code,
+          userIdFk,
           createdAt: new Date(),
         };
 

@@ -13,5 +13,8 @@ export const urlsTable = p.pgTable("urls", {
   url: p.text().notNull().unique(),
   created_at: p.date().defaultNow(),
   // TODO: will add the line below when the user functionalities are done
-  // user_id_fk: p.uuid().references(() => usersTable.id, { onDelete: "cascade" }),
+  user_id_fk: p
+    .uuid()
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
 });

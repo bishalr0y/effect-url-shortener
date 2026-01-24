@@ -57,6 +57,13 @@
       "when": 1768372037245,
       "tag": "0007_alter_users_table_created_at_type",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1769231432366,
+      "tag": "0008_alter_urls_table_add_user_id_fk",
+      "breakpoints": true
     }
   ]
 }

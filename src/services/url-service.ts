@@ -14,6 +14,7 @@ export class UrlService extends Context.Tag("app/UrlService")<
   {
     shortenUrl: (
       url: string,
+      userIdFk: string,
     ) => Effect.Effect<
       string,
       | DatabaseError
@@ -50,7 +51,7 @@ const makeLive = Effect.gen(function* () {
   const repo = yield* UrlRepository;
 
   return UrlService.of({
-    shortenUrl: (url: string) =>
+    shortenUrl: (url: string, userIdfk: string) =>
       Effect.gen(function* () {
         // validate url
         yield* validateUrl(url);
@@ -75,7 +76,7 @@ const makeLive = Effect.gen(function* () {
         }
 
         // create url record (add it to the db)
-        yield* repo.create(url, code);
+        yield* repo.create(url, code, userIdfk);
         return code;
       }),
 
