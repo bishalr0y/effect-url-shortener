@@ -13,7 +13,7 @@ export interface User {
   id: string;
   email: string;
   password: string;
-  createdAt: Date;
+  createdAt: string;
 }
 
 // Step 1: Define Service Tag
@@ -84,9 +84,7 @@ export const makeLive = Effect.sync(() =>
         return {
           id: user[0].id,
           email: user[0].email,
-          createdAt: user[0].createdAt
-            ? new Date(user[0].createdAt)
-            : new Date(),
+          createdAt: user[0].createdAt?.toString() || new Date().toString(),
         };
       }),
     getById: (id: string) =>
@@ -109,29 +107,22 @@ export const makeLive = Effect.sync(() =>
         return {
           id: user.id,
           email: user.email,
-          createdAt: user.created_at ? new Date(user.created_at) : new Date(),
+          createdAt: user.created_at?.toString() || new Date().toString(),
         };
       }),
     getAll: () =>
       Effect.gen(function* () {
-        yield* Effect.tryPromise({
-          try: async () => {
-            const records = await db.select().from(usersTable);
-            const users: User[] = [];
-            for (let i = 0; i < records.length; i++) {
-              users[i] = {
-                id: records[i].id,
-                email: records[i].email,
-                password: "",
-                createdAt: records[i].created_at
-                  ? new Date(records[i].created_at as string)
-                  : new Date(),
-              };
-            }
-            return users;
-          },
+        const records = yield* Effect.tryPromise({
+          try: () => db.select().from(usersTable),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
+        
+        return records.map(record => ({
+          id: record.id,
+          email: record.email,
+          password: "",
+          createdAt: record.created_at?.toString() || new Date().toString(),
+        }));
         return [] as User[];
       }),
     getByEmail: (email: string) =>
@@ -157,7 +148,7 @@ export const makeLive = Effect.sync(() =>
           id: user.id,
           email: user.email,
           password: user.password,
-          createdAt: user.created_at ? new Date(user.created_at) : new Date(),
+          createdAt: user.created_at?.toString() || new Date().toString(),
         };
       }),
   }),
@@ -176,7 +167,7 @@ const makeTest = Effect.sync(() => {
           id: crypto.randomUUID(),
           email,
           password,
-          createdAt: new Date(),
+          createdAt: new Date().toString(),
         };
 
         store.set(newUser.id, newUser);

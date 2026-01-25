@@ -6,7 +6,7 @@ import {
   UserDoesntExistsError,
 } from "../errors";
 import jwt from "jsonwebtoken";
-import { UserRepository } from "../repositories/user-repository";
+import { User, UserRepository } from "../repositories/user-repository";
 import { generateHash, validateHash } from "../utils/index";
 
 export class UserService extends Context.Tag("app/UserService")<
@@ -26,6 +26,8 @@ export class UserService extends Context.Tag("app/UserService")<
       string,
       DatabaseError | UserDoesntExistsError | InvalidCredentialsError
     >;
+
+    getAllUsers: () => Effect.Effect<User[], DatabaseError>;
   }
 >() {}
 
@@ -74,6 +76,11 @@ const makeLive = Effect.gen(function* () {
 
         const token = generateJwtToken(user.id, user.email);
         return token;
+      }),
+    getAllUsers: () =>
+      Effect.gen(function* () {
+        const users = yield* repo.getAll();
+        return users;
       }),
   });
 });

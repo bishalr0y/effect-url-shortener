@@ -1,7 +1,11 @@
 import { Context } from "hono";
 import { Effect, Layer, Schema } from "effect";
 import { UserService, UserServiceLive } from "../services/user-service";
-import { UserAuthRequest, UserAuthResponse } from "../schemas";
+import {
+  GetAllUsersResponse,
+  UserAuthRequest,
+  UserAuthResponse,
+} from "../schemas";
 import { UserRepositoryLive } from "../repositories/user-repository";
 
 // helper function to return human readable error message
@@ -164,4 +168,57 @@ export const signInHandler = async (c: Context) => {
     message: result.message,
     token: result.token,
   });
+};
+
+export const getAllUsersHandler = async (c: Context) => {
+  const program = Effect.gen(function* () {
+    const service = yield* UserService;
+
+    const users = yield* service.getAllUsers();
+    return {
+      ok: true,
+      message: "fetched all users",
+      users,
+    };
+  });
+
+  const layer = Layer.provide(UserServiceLive, UserRepositoryLive);
+
+  const result = await Effect.runPromise(
+    Effect.provide(program, layer).pipe(
+      Effect.map((response) => {
+        console.log("Success response:", response);
+        return { ...response, statusCode: 200 };
+      }),
+
+      Effect.catchTag("DatabaseError", (error) => {
+        console.log("DatabaseError:", error.message);
+        return Effect.succeed({
+          ok: false,
+          message: error.message,
+          users: [],
+          statusCode: 500,
+        });
+      }),
+
+      Effect.catchAll((error) => {
+        console.log("Uncaught error:", error);
+        return Effect.succeed({
+          ok: false,
+          message: "Unexpected error",
+          users: [],
+          statusCode: 500,
+        });
+      }),
+    ),
+  );
+
+  return c.json(
+    {
+      ok: result.ok,
+      message: result.message,
+      users: result.users,
+    },
+    result.statusCode as 200 | 500,
+  );
 };

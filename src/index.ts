@@ -6,17 +6,24 @@ import {
   redirectHandler,
   infoHandler,
 } from "./controllers/url-controllers";
-import { signInHandler, signupHandler } from "./controllers/user-controllers";
+import {
+  getAllUsersHandler,
+  signInHandler,
+  signupHandler,
+} from "./controllers/user-controllers";
 
 const app = new Hono();
 app.use(logger());
 
-app.post("/shorten", shortenHandler);
-app.get("/:code", redirectHandler);
-app.get("/:code/info", infoHandler);
+app.post("url/shorten", shortenHandler);
+app.get("url/:code", redirectHandler);
+app.get("url/:code/info", infoHandler);
 
-app.post("/signup", signupHandler);
+app.post("auth/signup", signupHandler);
 
-app.post("/signin", signInHandler);
+app.post("auth/signin", signInHandler);
+
+// TODO: this is contradicting
+app.get("/users", getAllUsersHandler);
 
 export default app;
