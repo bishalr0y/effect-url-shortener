@@ -28,6 +28,12 @@ export class UserService extends Context.Tag("app/UserService")<
     >;
 
     getAllUsers: () => Effect.Effect<User[], DatabaseError>;
+    getUser: (
+      id: string,
+    ) => Effect.Effect<
+      Omit<User, "password">,
+      DatabaseError | UserDoesntExistsError
+    >;
   }
 >() {}
 
@@ -81,6 +87,12 @@ const makeLive = Effect.gen(function* () {
       Effect.gen(function* () {
         const users = yield* repo.getAll();
         return users;
+      }),
+
+    getUser: (id: string) =>
+      Effect.gen(function* () {
+        const user = yield* repo.getById(id);
+        return user;
       }),
   });
 });

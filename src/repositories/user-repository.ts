@@ -116,14 +116,13 @@ export const makeLive = Effect.sync(() =>
           try: () => db.select().from(usersTable),
           catch: (error) => new DatabaseError({ message: String(error) }),
         });
-        
-        return records.map(record => ({
+
+        return records.map((record) => ({
           id: record.id,
           email: record.email,
           password: "",
           createdAt: record.created_at?.toString() || new Date().toString(),
         }));
-        return [] as User[];
       }),
     getByEmail: (email: string) =>
       Effect.gen(function* () {

@@ -35,9 +35,3 @@ export const UserAuthResponse = Schema.Struct({
   token: Schema.String,
   message: Schema.String,
 });
-
-export const GetAllUsersResponse = Schema.Struct({
-  ok: Schema.Boolean,
-  message: Schema.String,
-  users: Schema.Array(User),
-});

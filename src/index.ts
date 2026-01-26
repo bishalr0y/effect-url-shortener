@@ -8,6 +8,7 @@ import {
 } from "./controllers/url-controllers";
 import {
   getAllUsersHandler,
+  getUserHandler,
   signInHandler,
   signupHandler,
 } from "./controllers/user-controllers";
@@ -23,7 +24,7 @@ app.post("auth/signup", signupHandler);
 
 app.post("auth/signin", signInHandler);
 
-// TODO: this is contradicting
 app.get("/users", getAllUsersHandler);
+app.get("/users/:id", getUserHandler);
 
 export default app;
