@@ -41,5 +41,11 @@ export class InvalidCredentialsError extends Data.TaggedError(
 export class InvalidJwtTokenError extends Data.TaggedError(
   "InvalidJwtTokenError",
 )<{
-  readonly messag: string;
+  readonly message: string;
+}> {}
+
+export class UnauthorizedRequestError extends Data.TaggedError(
+  "UnauthorizedRequestError",
+)<{
+  readonly message: string;
 }> {}

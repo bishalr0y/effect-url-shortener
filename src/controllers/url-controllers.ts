@@ -3,6 +3,8 @@ import { Effect, Schema, Layer } from "effect";
 import { UrlService, UrlServiceLive } from "../services/url-service";
 import { UrlRepositoryLive } from "../repositories/url-repository";
 import { ShortenRequest, ShortenResponse, Url } from "../schemas";
+import { yieldFlush } from "effect/Micro";
+import { UnauthorizedRequestError } from "../errors";
 
 // Handler 1: Shorten URL
 export const shortenHandler = async (c: Context) => {
@@ -12,6 +14,16 @@ export const shortenHandler = async (c: Context) => {
     // parse request
     const body = yield* Effect.promise(() => c.req.json());
     const { url, userIdFk } = yield* Schema.decodeUnknown(ShortenRequest)(body);
+
+    // TODO: check if the userId is the same as that of the present in the token
+    // if not then return error
+    const userIdFromToken = c.get("userId") as string;
+
+    if (userIdFromToken !== "" && userIdFromToken !== userIdFk) {
+      return yield* new UnauthorizedRequestError({
+        message: "user not authorized",
+      });
+    }
 
     // call service
     const code = yield* service.shortenUrl(url, userIdFk);
@@ -51,12 +63,20 @@ export const shortenHandler = async (c: Context) => {
           statusCode: 500,
         }),
       ),
+
+      Effect.catchTag("UnauthorizedRequestError", (error) =>
+        Effect.succeed({
+          ok: false,
+          message: error.message,
+          statusCode: 401,
+        }),
+      ),
     ),
   );
 
   return c.json(
     { ok: result.ok, message: result.message },
-    result.statusCode as 200 | 400 | 500,
+    result.statusCode as 200 | 400 | 401 | 500,
   );
 };
 
@@ -67,14 +87,6 @@ export const redirectHandler = async (c: Context) => {
   const program = Effect.gen(function* () {
     const service = yield* UrlService;
     const urlRecord = yield* service.resolveUrl(code);
-
-    if (!urlRecord) {
-      return yield* Schema.encode(ShortenResponse)({
-        ok: false,
-        message: "URL not found",
-      });
-    }
-
     return { redirect: urlRecord.url };
   });
 
@@ -121,14 +133,6 @@ export const infoHandler = async (c: Context) => {
   const program = Effect.gen(function* () {
     const service = yield* UrlService;
     const urlRecord = yield* service.getUrlInfo(code);
-
-    if (!urlRecord) {
-      return yield* Schema.encode(ShortenResponse)({
-        ok: false,
-        message: "URL not found",
-      });
-    }
-
     return yield* Schema.encode(Url)({
       id: urlRecord.id,
       url: urlRecord.url,

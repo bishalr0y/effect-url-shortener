@@ -3,7 +3,6 @@ import { Effect, Layer, Schema } from "effect";
 import { UserService, UserServiceLive } from "../services/user-service";
 import { UserAuthRequest, UserAuthResponse } from "../schemas";
 import { UserRepositoryLive } from "../repositories/user-repository";
-import { toRuntimeWithMemoMap } from "effect/Layer";
 
 // helper function to return human readable error message
 const formatValidationError = (message: string): string => {
@@ -33,7 +32,7 @@ export const signupHandler = async (c: Context) => {
     return yield* Schema.encode(UserAuthResponse)({
       ok: true,
       token: jwtToken,
-      message: "user signup successfull",
+      message: "user signup successful",
     });
   });
 
@@ -95,7 +94,7 @@ export const signInHandler = async (c: Context) => {
     return yield* Schema.encode(UserAuthResponse)({
       ok: true,
       token: jwtToken,
-      message: "user signin successfull",
+      message: "user signin successful",
     });
   });
 
@@ -160,11 +159,14 @@ export const signInHandler = async (c: Context) => {
     ),
   );
 
-  return c.json({
-    ok: result.ok,
-    message: result.message,
-    token: result.token,
-  });
+  return c.json(
+    {
+      ok: result.ok,
+      message: result.message,
+      token: result.token,
+    },
+    result.statusCode as 200 | 400 | 500,
+  );
 };
 
 export const getAllUsersHandler = async (c: Context) => {
