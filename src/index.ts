@@ -12,19 +12,20 @@ import {
   signInHandler,
   signupHandler,
 } from "./controllers/user-controllers";
+import { authMiddleware } from "./middleware/auth";
 
 const app = new Hono();
 app.use(logger());
 
-app.post("url/shorten", shortenHandler);
+app.post("url/shorten", authMiddleware, shortenHandler);
 app.get("url/:code", redirectHandler);
-app.get("url/:code/info", infoHandler);
+app.get("url/:code/info", authMiddleware, infoHandler);
 
 app.post("auth/signup", signupHandler);
 
 app.post("auth/signin", signInHandler);
 
-app.get("/users", getAllUsersHandler);
-app.get("/users/:id", getUserHandler);
+app.get("/users", authMiddleware, getAllUsersHandler);
+app.get("/users/:id", authMiddleware, getUserHandler);
 
 export default app;
