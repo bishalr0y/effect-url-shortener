@@ -3,7 +3,13 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts"
   },
+  "plugins": [
+    {
+      "name": "@effect/language-service"
+    }
+  ],
   "dependencies": {
+    "@effect/language-service": "^0.72.0",
     "@types/bcrypt": "^6.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "bcrypt": "^6.0.0",
@@ -15,7 +21,6 @@
     "postgres": "^3.4.7"
   },
   "devDependencies": {
-    "@effect/language-service": "^0.63.0",
     "@types/bun": "latest",
     "drizzle-kit": "^0.31.8"
   }
