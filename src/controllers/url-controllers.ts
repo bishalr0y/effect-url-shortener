@@ -3,8 +3,7 @@ import { Effect, Schema, Layer } from "effect";
 import { UrlService, UrlServiceLive } from "../services/url-service";
 import { UrlRepositoryLive } from "../repositories/url-repository";
 import { ShortenRequest, ShortenResponse, Url } from "../schemas";
-import { yieldFlush } from "effect/Micro";
-import { UnauthorizedRequestError } from "../errors";
+import { UnauthorizedRequestError, UrlDoesntExistsError } from "../errors";
 
 // Handler 1: Shorten URL
 export const shortenHandler = async (c: Context) => {
@@ -87,6 +86,12 @@ export const redirectHandler = async (c: Context) => {
   const program = Effect.gen(function* () {
     const service = yield* UrlService;
     const urlRecord = yield* service.resolveUrl(code);
+
+    if (!urlRecord) {
+      return yield* Effect.fail(
+        new UrlDoesntExistsError({ message: "url record not found" }),
+      );
+    }
     return { redirect: urlRecord.url };
   });
 
@@ -133,6 +138,13 @@ export const infoHandler = async (c: Context) => {
   const program = Effect.gen(function* () {
     const service = yield* UrlService;
     const urlRecord = yield* service.getUrlInfo(code);
+
+    if (!urlRecord) {
+      return yield* Effect.fail(
+        new UrlDoesntExistsError({ message: "url record not found" }),
+      );
+    }
+
     return yield* Schema.encode(Url)({
       id: urlRecord.id,
       url: urlRecord.url,
