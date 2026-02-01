@@ -49,3 +49,15 @@ export class UnauthorizedRequestError extends Data.TaggedError(
 )<{
   readonly message: string;
 }> {}
+
+export class HashGenerationError extends Data.TaggedError(
+  "HashGenerationError",
+)<{
+  readonly message: string;
+}> {}
+
+export class JwtGenerationError extends Data.TaggedError(
+  "JwtGenerationError",
+)<{
+  readonly message: string;
+}> {}

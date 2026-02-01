@@ -1,9 +1,9 @@
 import { Context } from "hono";
-import { Effect, Schema, Layer } from "effect";
-import { UrlService, UrlServiceLive } from "../services/url-service";
-import { UrlRepositoryLive } from "../repositories/url-repository";
+import { Effect, Schema } from "effect";
+import { UrlService } from "../services/url-service";
 import { ShortenRequest, ShortenResponse, Url } from "../schemas";
 import { UnauthorizedRequestError, UrlDoesntExistsError } from "../errors";
+import { appLayer } from "../layers";
 
 // Handler 1: Shorten URL
 export const shortenHandler = async (c: Context) => {
@@ -27,6 +27,12 @@ export const shortenHandler = async (c: Context) => {
     // call service
     const code = yield* service.shortenUrl(url, userIdFk);
 
+    yield* Effect.logInfo("URL shortened successfully", {
+      url,
+      code,
+      userIdFk,
+    });
+
     // return response
     return yield* Schema.encode(ShortenResponse)({
       ok: true,
@@ -34,40 +40,56 @@ export const shortenHandler = async (c: Context) => {
     });
   });
 
-  const layer = Layer.provide(UrlServiceLive, UrlRepositoryLive);
-
   const result = await Effect.runPromise(
-    Effect.provide(program, layer).pipe(
+    Effect.provide(program, appLayer).pipe(
       // adding the status code to the response type
       Effect.map((response) => ({ ...response, statusCode: 200 })),
 
       Effect.catchTag("UrlAlreadyExistsError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: error.message,
-          statusCode: 400,
+        Effect.gen(function* () {
+          yield* Effect.logError("UrlAlreadyExistsError", {
+            message: error.message,
+          });
+          return {
+            ok: false,
+            message: error.message,
+            statusCode: 400,
+          };
         }),
       ),
       Effect.catchTag("UrlValidationError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: error.message,
-          statusCode: 400,
+        Effect.gen(function* () {
+          yield* Effect.logError("UrlValidationError", {
+            message: error.message,
+          });
+          return {
+            ok: false,
+            message: error.message,
+            statusCode: 400,
+          };
         }),
       ),
       Effect.catchTag("DatabaseError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: error.message,
-          statusCode: 500,
+        Effect.gen(function* () {
+          yield* Effect.logError("DatabaseError", { message: error.message });
+          return {
+            ok: false,
+            message: error.message,
+            statusCode: 500,
+          };
         }),
       ),
 
       Effect.catchTag("UnauthorizedRequestError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: error.message,
-          statusCode: 401,
+        Effect.gen(function* () {
+          yield* Effect.logError("UnauthorizedRequestError", {
+            message: error.message,
+          });
+          return {
+            ok: false,
+            message: error.message,
+            statusCode: 401,
+          };
         }),
       ),
     ),
@@ -92,29 +114,40 @@ export const redirectHandler = async (c: Context) => {
         new UrlDoesntExistsError({ message: "url record not found" }),
       );
     }
+
+    yield* Effect.logInfo("URL redirect successful", {
+      code,
+      url: urlRecord.url,
+    });
     return { redirect: urlRecord.url };
   });
 
-  const layer = Layer.provide(UrlServiceLive, UrlRepositoryLive);
-
   const result = await Effect.runPromise(
-    Effect.provide(program, layer).pipe(
+    Effect.provide(program, appLayer).pipe(
       // adding the status code to the response type
       Effect.map((response) => ({ ...response, statusCode: 200 })),
 
       Effect.catchTag("DatabaseError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: error.message,
-          statusCode: 500,
+        Effect.gen(function* () {
+          yield* Effect.logError("DatabaseError", { message: error.message });
+          return {
+            ok: false,
+            message: error.message,
+            statusCode: 500,
+          };
         }),
       ),
 
       Effect.catchTag("UrlDoesntExistsError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: error.message,
-          statusCode: 404,
+        Effect.gen(function* () {
+          yield* Effect.logError("UrlDoesntExistsError", {
+            message: error.message,
+          });
+          return {
+            ok: false,
+            message: error.message,
+            statusCode: 404,
+          };
         }),
       ),
     ),
@@ -145,6 +178,8 @@ export const infoHandler = async (c: Context) => {
       );
     }
 
+    yield* Effect.logInfo("URL info retrieved", { code, url: urlRecord.url });
+
     return yield* Schema.encode(Url)({
       id: urlRecord.id,
       url: urlRecord.url,
@@ -154,24 +189,30 @@ export const infoHandler = async (c: Context) => {
     });
   });
 
-  const layer = Layer.provide(UrlServiceLive, UrlRepositoryLive);
-
   const result = await Effect.runPromise(
-    Effect.provide(program, layer).pipe(
+    Effect.provide(program, appLayer).pipe(
       Effect.map((response) => ({ ...response, statusCode: 200 })),
 
       Effect.catchTag("DatabaseError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: error.message,
-          statusCode: 500,
+        Effect.gen(function* () {
+          yield* Effect.logError("DatabaseError", { message: error.message });
+          return {
+            ok: false,
+            message: error.message,
+            statusCode: 500,
+          };
         }),
       ),
       Effect.catchTag("UrlDoesntExistsError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: error.message,
-          statusCode: 404,
+        Effect.gen(function* () {
+          yield* Effect.logError("UrlDoesntExistsError", {
+            message: error.message,
+          });
+          return {
+            ok: false,
+            message: error.message,
+            statusCode: 404,
+          };
         }),
       ),
     ),

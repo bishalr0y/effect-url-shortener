@@ -4,6 +4,8 @@ import {
   InvalidCredentialsError,
   UserAlreadyExistsError,
   UserDoesntExistsError,
+  JwtGenerationError,
+  HashGenerationError,
 } from "../errors";
 import jwt from "jsonwebtoken";
 import { User, UserRepository } from "../repositories/user-repository";
@@ -16,7 +18,7 @@ export class UserService extends Context.Tag("app/UserService")<
     signup: (
       email: string,
       password: string,
-    ) => Effect.Effect<string, UserAlreadyExistsError | DatabaseError>;
+    ) => Effect.Effect<string, UserAlreadyExistsError | DatabaseError | HashGenerationError | JwtGenerationError>;
 
     // login
     signin: (
@@ -24,7 +26,7 @@ export class UserService extends Context.Tag("app/UserService")<
       password: string,
     ) => Effect.Effect<
       string,
-      DatabaseError | UserDoesntExistsError | InvalidCredentialsError
+      DatabaseError | UserDoesntExistsError | InvalidCredentialsError | HashGenerationError | JwtGenerationError
     >;
 
     getAllUsers: () => Effect.Effect<User[], DatabaseError>;
@@ -38,23 +40,27 @@ export class UserService extends Context.Tag("app/UserService")<
 >() {}
 
 // helper function
-const generateJwtToken = (id: string, email: string) => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error("JWT_SECRET not found in env");
-  }
+const generateJwtToken = (id: string, email: string) =>
+  Effect.try({
+    try: () => {
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        throw new Error("JWT_SECRET not found in env");
+      }
 
-  return jwt.sign(
-    {
-      data: {
-        id,
-        email,
-      },
+      return jwt.sign(
+        {
+          data: {
+            id,
+            email,
+          },
+        },
+        secret,
+        { expiresIn: "1hr", audience: "user", issuer: "admin" },
+      );
     },
-    secret,
-    { expiresIn: "1hr", audience: "user", issuer: "admin" },
-  );
-};
+    catch: (error) => new JwtGenerationError({ message: String(error) })
+  });
 
 const makeLive = Effect.gen(function* () {
   const repo = yield* UserRepository;
@@ -62,17 +68,18 @@ const makeLive = Effect.gen(function* () {
   return UserService.of({
     signup: (email: string, password: string) =>
       Effect.gen(function* () {
-        const hashedPassword = generateHash(password);
+        const hashedPassword = yield* generateHash(password);
 
         const user = yield* repo.create(email, hashedPassword);
-        const token = generateJwtToken(user.id, user.email);
+        const token = yield* generateJwtToken(user.id, user.email);
         return token;
       }),
     signin: (email: string, password: string) =>
       Effect.gen(function* () {
         const user = yield* repo.getByEmail(email);
 
-        if (!validateHash(password, user.password)) {
+        const isValidPassword = yield* validateHash(password, user.password);
+        if (!isValidPassword) {
           yield* Effect.fail(
             new InvalidCredentialsError({
               message: "invalid credentials",
@@ -80,7 +87,7 @@ const makeLive = Effect.gen(function* () {
           );
         }
 
-        const token = generateJwtToken(user.id, user.email);
+        const token = yield* generateJwtToken(user.id, user.email);
         return token;
       }),
     getAllUsers: () =>

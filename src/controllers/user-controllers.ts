@@ -1,8 +1,8 @@
 import { Context } from "hono";
-import { Effect, Layer, Schema } from "effect";
-import { UserService, UserServiceLive } from "../services/user-service";
+import { Effect, Schema } from "effect";
+import { UserService } from "../services/user-service";
 import { UserAuthRequest, UserAuthResponse } from "../schemas";
-import { UserRepositoryLive } from "../repositories/user-repository";
+import { appLayer } from "../layers";
 
 // helper function to return human readable error message
 const formatValidationError = (message: string): string => {
@@ -29,6 +29,8 @@ export const signupHandler = async (c: Context) => {
 
     const jwtToken = yield* userService.signup(email, password);
 
+    yield* Effect.logInfo("User signup successful", { email });
+
     return yield* Schema.encode(UserAuthResponse)({
       ok: true,
       token: jwtToken,
@@ -36,36 +38,57 @@ export const signupHandler = async (c: Context) => {
     });
   });
 
-  const layer = Layer.provide(UserServiceLive, UserRepositoryLive);
-
   const result = await Effect.runPromise(
-    Effect.provide(program, layer).pipe(
+    Effect.provide(program, appLayer).pipe(
       Effect.map((response) => ({ ...response, statusCode: 200 })),
 
       Effect.catchTag("ParseError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: formatValidationError(error.message),
-          token: "",
-          statusCode: 400,
+        Effect.gen(function* () {
+          yield* Effect.logError("ParseError", { message: error.message });
+          return {
+            ok: false,
+            message: formatValidationError(error.message),
+            token: "",
+            statusCode: 400,
+          };
         }),
       ),
 
       Effect.catchTag("UserAlreadyExistsError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: error.message,
-          token: "",
-          statusCode: 400,
+        Effect.gen(function* () {
+          yield* Effect.logError("UserAlreadyExistsError", {
+            message: error.message,
+          });
+          return {
+            ok: false,
+            message: error.message,
+            token: "",
+            statusCode: 400,
+          };
         }),
       ),
 
       Effect.catchTag("DatabaseError", (error) =>
-        Effect.succeed({
-          ok: false,
-          message: error.message,
-          token: "",
-          statusCode: 500,
+        Effect.gen(function* () {
+          yield* Effect.logError("DatabaseError", { message: error.message });
+          return {
+            ok: false,
+            message: error.message,
+            token: "",
+            statusCode: 500,
+          };
+        }),
+      ),
+
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("Uncaught error", { error });
+          return {
+            ok: false,
+            message: "Unexpected error",
+            token: "",
+            statusCode: 500,
+          };
         }),
       ),
     ),
@@ -91,6 +114,8 @@ export const signInHandler = async (c: Context) => {
 
     const jwtToken = yield* service.signin(email, password);
 
+    yield* Effect.logInfo("User signin successful", { email });
+
     return yield* Schema.encode(UserAuthResponse)({
       ok: true,
       token: jwtToken,
@@ -98,64 +123,73 @@ export const signInHandler = async (c: Context) => {
     });
   });
 
-  const layer = Layer.provide(UserServiceLive, UserRepositoryLive);
-
   const result = await Effect.runPromise(
-    Effect.provide(program, layer).pipe(
-      Effect.map((response) => {
-        console.log("Success response:", response);
-        return { ...response, statusCode: 200 };
-      }),
+    Effect.provide(program, appLayer).pipe(
+      Effect.map((response) => ({ ...response, statusCode: 200 })),
 
-      Effect.catchTag("ParseError", (error) => {
-        console.log("ParseError:", error.message);
-        return Effect.succeed({
-          ok: false,
-          message: formatValidationError(error.message),
-          token: "",
-          statusCode: 400,
-        });
-      }),
+      Effect.catchTag("ParseError", (error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("ParseError", { message: error.message });
+          return {
+            ok: false,
+            message: formatValidationError(error.message),
+            token: "",
+            statusCode: 400,
+          };
+        }),
+      ),
 
-      Effect.catchTag("UserDoesntExistsError", (error) => {
-        console.log("UserDoesntExistsError:", error.message);
-        return Effect.succeed({
-          ok: false,
-          message: error.message,
-          token: "",
-          statusCode: 400,
-        });
-      }),
+      Effect.catchTag("UserDoesntExistsError", (error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("UserDoesntExistsError", {
+            message: error.message,
+          });
+          return {
+            ok: false,
+            message: error.message,
+            token: "",
+            statusCode: 400,
+          };
+        }),
+      ),
 
-      Effect.catchTag("InvalidCredentialsError", (error) => {
-        console.log("InvalidCredentialsError:", error.message);
-        return Effect.succeed({
-          ok: false,
-          message: error.message,
-          token: "",
-          statusCode: 400,
-        });
-      }),
+      Effect.catchTag("InvalidCredentialsError", (error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("InvalidCredentialsError", {
+            message: error.message,
+          });
+          return {
+            ok: false,
+            message: error.message,
+            token: "",
+            statusCode: 400,
+          };
+        }),
+      ),
 
-      Effect.catchTag("DatabaseError", (error) => {
-        console.log("DatabaseError:", error.message);
-        return Effect.succeed({
-          ok: false,
-          message: formatValidationError(error.message),
-          token: "",
-          statusCode: 500,
-        });
-      }),
+      Effect.catchTag("DatabaseError", (error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("DatabaseError", { message: error.message });
+          return {
+            ok: false,
+            message: error.message,
+            token: "",
+            statusCode: 500,
+          };
+        }),
+      ),
 
-      Effect.catchAll((error) => {
-        console.log("Uncaught error:", error);
-        return Effect.succeed({
-          ok: false,
-          message: "Unexpected error",
-          token: "",
-          statusCode: 500,
-        });
-      }),
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("Uncaught error", { error });
+          return {
+            ok: false,
+            message: "Unexpected error",
+            token: "",
+            statusCode: 500,
+          };
+        }),
+      ),
     ),
   );
 
@@ -174,6 +208,9 @@ export const getAllUsersHandler = async (c: Context) => {
     const service = yield* UserService;
 
     const users = yield* service.getAllUsers();
+
+    yield* Effect.logInfo("Fetched all users", { userCount: users.length });
+
     return {
       ok: true,
       message: "fetched all users",
@@ -181,34 +218,33 @@ export const getAllUsersHandler = async (c: Context) => {
     };
   });
 
-  const layer = Layer.provide(UserServiceLive, UserRepositoryLive);
-
   const result = await Effect.runPromise(
-    Effect.provide(program, layer).pipe(
-      Effect.map((response) => {
-        console.log("Success response:", response);
-        return { ...response, statusCode: 200 };
-      }),
+    Effect.provide(program, appLayer).pipe(
+      Effect.map((response) => ({ ...response, statusCode: 200 })),
 
-      Effect.catchTag("DatabaseError", (error) => {
-        console.log("DatabaseError:", error.message);
-        return Effect.succeed({
-          ok: false,
-          message: error.message,
-          users: [],
-          statusCode: 500,
-        });
-      }),
+      Effect.catchTag("DatabaseError", (error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("DatabaseError", { message: error.message });
+          return {
+            ok: false,
+            message: error.message,
+            users: [],
+            statusCode: 500,
+          };
+        }),
+      ),
 
-      Effect.catchAll((error) => {
-        console.log("Uncaught error:", error);
-        return Effect.succeed({
-          ok: false,
-          message: "Unexpected error",
-          users: [],
-          statusCode: 500,
-        });
-      }),
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("Uncaught error", { error });
+          return {
+            ok: false,
+            message: "Unexpected error",
+            users: [],
+            statusCode: 500,
+          };
+        }),
+      ),
     ),
   );
 
@@ -228,6 +264,9 @@ export const getUserHandler = async (c: Context) => {
     const service = yield* UserService;
 
     const user = yield* service.getUser(userId);
+
+    yield* Effect.logInfo("User found", { userId });
+
     return {
       ok: true,
       message: "user found successfully",
@@ -235,44 +274,50 @@ export const getUserHandler = async (c: Context) => {
     };
   });
 
-  const layer = Layer.provide(UserServiceLive, UserRepositoryLive);
-
   const result = await Effect.runPromise(
-    Effect.provide(program, layer).pipe(
-      Effect.map((response) => {
-        console.log("Success response:", response);
-        return { ...response, statusCode: 200 };
-      }),
+    Effect.provide(program, appLayer).pipe(
+      Effect.map((response) => ({ ...response, statusCode: 200 })),
 
-      Effect.catchTag("UserDoesntExistsError", (error) => {
-        console.log("UserDoesntExistsError:", error.message);
-        return Effect.succeed({
-          ok: false,
-          message: error.message,
-          user: null,
-          statusCode: 404,
-        });
-      }),
-      Effect.catchTag("DatabaseError", (error) => {
-        console.log("DatabaseError:", error.message);
-        return Effect.succeed({
-          ok: false,
-          message: error.message,
-          user: null,
-          statusCode: 500,
-        });
-      }),
-      Effect.catchAll((error) => {
-        console.log("Uncaught error:", error);
-        return Effect.succeed({
-          ok: false,
-          message: "Unexpected error",
-          user: null,
-          statusCode: 500,
-        });
-      }),
+      Effect.catchTag("UserDoesntExistsError", (error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("UserDoesntExistsError", {
+            message: error.message,
+          });
+          return {
+            ok: false,
+            message: error.message,
+            user: null,
+            statusCode: 404,
+          };
+        }),
+      ),
+
+      Effect.catchTag("DatabaseError", (error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("DatabaseError", { message: error.message });
+          return {
+            ok: false,
+            message: error.message,
+            user: null,
+            statusCode: 500,
+          };
+        }),
+      ),
+
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          yield* Effect.logError("Uncaught error", { error });
+          return {
+            ok: false,
+            message: "Unexpected error",
+            user: null,
+            statusCode: 500,
+          };
+        }),
+      ),
     ),
   );
+
   return c.json(
     {
       ok: result.ok,
@@ -282,3 +327,4 @@ export const getUserHandler = async (c: Context) => {
     result.statusCode as 200 | 404 | 500,
   );
 };
+
